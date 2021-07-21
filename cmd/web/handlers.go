@@ -1,16 +1,20 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
 	"text/template"
+
+	"github.com/sioncheng/snippetbox/pkg/models"
+	"github.com/sioncheng/snippetbox/pkg/models/mysql"
 )
 
 type application struct {
 	errorLog *log.Logger
 	infoLog  *log.Logger
+	snippets *mysql.SnippetModel
 }
 
 func (app *application) home(rw http.ResponseWriter, r *http.Request) {
@@ -44,8 +48,34 @@ func (app *application) showSnippet(rw http.ResponseWriter, r *http.Request) {
 		app.notFound(rw)
 		return
 	}
+
+	snippet, err := app.snippets.Get(id)
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			app.notFound(rw)
+		} else {
+			app.serverError(rw, err)
+		}
+		return
+	}
+
 	//rw.Write([]byte("Display a specific snippet..."))
-	fmt.Fprintf(rw, "Display a specific snippet with ID %d...", id)
+	//fmt.Fprintf(rw, "%v", snippet)
+	files := []string{
+		"./ui/html/show.page.tmpl",
+		"./ui/html/base.layout.tmpl",
+		"./ui/html/footer.partial.tmpl",
+	}
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		app.serverError(rw, err)
+		return
+	}
+
+	err = ts.Execute(rw, snippet)
+	if err != nil {
+		app.serverError(rw, err)
+	}
 }
 
 func (app *application) createSnippet(rw http.ResponseWriter, r *http.Request) {
@@ -56,5 +86,6 @@ func (app *application) createSnippet(rw http.ResponseWriter, r *http.Request) {
 		app.clientError(rw, http.StatusMethodNotAllowed)
 		return
 	}
+
 	rw.Write([]byte("Create a new snippet..."))
 }

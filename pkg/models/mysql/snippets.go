@@ -15,7 +15,7 @@ func (m *SnippetModel) Insert(title, content, expires string) (int, error) {
 	stmt := `insert into snippets (title, content, created, expires) 
 		values (?, ?, UTC_TIMESTAMP(), DATE_ADD(UTC_TIMESTAMP(), interval ? day) )
 	`
-	result, err := m.DB.Exec(stmt)
+	result, err := m.DB.Exec(stmt, title, content, expires)
 	if err != nil {
 		return 0, err
 	}
